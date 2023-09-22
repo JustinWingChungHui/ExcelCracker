@@ -1,4 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using Aspose.Cells;
 using ExcelCrack;
 using ExcelDataReader;
 using System.IO;
@@ -18,8 +19,8 @@ if (!File.Exists(filePath))
 }
 
 var generator = new Generator(1);
-var threads = 1;
-
+var threads = 32;
+object once = new object();
 var attempts = 0;
 var timer = new System.Timers.Timer(1000);
 timer.Elapsed += OnTimedEvent;
@@ -33,23 +34,24 @@ void OnTimedEvent(object? sender, ElapsedEventArgs e)
 
 timer.Start();
 
-using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
+
+var tasks = new List<Task>();
+for (var thread = 1; thread <= threads; thread++)
 {
-    var tasks = new List<Task>();
-    for (var thread = 1; thread <= threads; thread++)
+    tasks.Add(Task.Run(() => CrackStream(filePath, generator)));
+}  
+
+await Task.WhenAny(tasks);
+
+void CrackStream(string filePath, Generator generator)
+{
+    var ms = new MemoryStream();
+    lock (once)
     {
-        MemoryStream ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-
-        tasks.Add(Task.Run(() => CrackStream(ms, generator)));
-
-    }  
-
-    await Task.WhenAny(tasks);
-}
-
-void CrackStream(MemoryStream ms, Generator generator)
-{
+        using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
+        stream.CopyTo(ms);
+    }
+    
     bool success = false;
     do
     {
@@ -61,23 +63,21 @@ void CrackStream(MemoryStream ms, Generator generator)
 
         try
         {
-            Console.WriteLine($"Trying {password}");
-            using (var reader = ExcelReaderFactory.CreateReader(ms, config))
-            {
-                reader.Read();
-            }
-
+            // Console.WriteLine($"Trying {password}");
+            ms.Position = 0;
+            using var workbook = new Workbook(ms, new LoadOptions { Password = password });
+            workbook.Unprotect(password);
 
             Console.WriteLine($"Success! Password is {password}");
             success = true;
             return;
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
         }
 
         attempts++;
         success = false;
-    } while (!success);    
+    } while (!success);
+    
 }
