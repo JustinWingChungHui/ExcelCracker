@@ -39,6 +39,18 @@ namespace ExcelCrack
             }
         }
 
+        public string getCurrentPassword()
+        {
+            var result = new StringBuilder();
+            for (int i = 0; i < _length; i++)
+            {
+                var counter = _counter[i];
+                result.Append(characters[counter]);
+            }
+
+            return result.ToString();
+        }
+
         private void IncrementCounter(int index)
         {
 

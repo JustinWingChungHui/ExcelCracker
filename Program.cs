@@ -3,6 +3,7 @@ using Aspose.Cells;
 using ExcelCrack;
 using ExcelDataReader;
 using System.IO;
+using System.Threading.Channels;
 using System.Timers;
 
 Console.WriteLine("Starting!");
@@ -17,9 +18,10 @@ if (!File.Exists(filePath))
     Console.WriteLine($"File does not exist {filePath}");
     return;
 }
+var fileInfo = new FileInfo(filePath);
 
 var generator = new Generator(1);
-var threads = 32;
+var threads = Environment.ProcessorCount;
 object once = new object();
 var attempts = 0;
 var timer = new System.Timers.Timer(1000);
@@ -28,7 +30,7 @@ timer.Elapsed += OnTimedEvent;
 void OnTimedEvent(object? sender, ElapsedEventArgs e)
 {
     var attemptsPersecond = attempts;
-    Console.WriteLine($"Attempts per second {attemptsPersecond}");
+    Console.WriteLine($"Attempts per second {attemptsPersecond}: {generator.getCurrentPassword()}");
     attempts = 0;
 }
 
@@ -38,17 +40,22 @@ timer.Start();
 var tasks = new List<Task>();
 for (var thread = 1; thread <= threads; thread++)
 {
-    tasks.Add(Task.Run(() => CrackStream(filePath, generator)));
+    tasks.Add(Task.Run(() => CrackStream(filePath, generator, fileInfo)));
 }  
 
 await Task.WhenAny(tasks);
 
-void CrackStream(string filePath, Generator generator)
+void CrackStream(string filePath, Generator generator, FileInfo fileInfo)
 {
+    if (fileInfo == null || fileInfo.DirectoryName == null)
+    {
+        throw new ArgumentNullException("fileInfo");
+    }
+
     var ms = new MemoryStream();
     lock (once)
     {
-        using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
+        using var stream = File.Open(fileInfo.FullName, FileMode.Open, FileAccess.Read);
         stream.CopyTo(ms);
     }
     
@@ -69,6 +76,7 @@ void CrackStream(string filePath, Generator generator)
             workbook.Unprotect(password);
 
             Console.WriteLine($"Success! Password is {password}");
+            CreateResultFile(password, fileInfo.DirectoryName);
             success = true;
             return;
         }
@@ -80,4 +88,15 @@ void CrackStream(string filePath, Generator generator)
         success = false;
     } while (!success);
     
+}
+
+void CreateResultFile(string password, string folderPath)
+{
+    var resultsPath = Path.Join(folderPath, "password.txt");
+    if (File.Exists(resultsPath))
+    {
+        File.Delete(resultsPath);
+    }
+
+    File.WriteAllText(resultsPath, password);
 }
