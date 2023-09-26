@@ -1,14 +1,10 @@
-﻿// See https://aka.ms/new-console-template for more information
-// using Aspose.Cells;
-using ExcelCrack;
+﻿using ExcelCrack;
 using OfficeOpenXml;
 using System.Timers;
 
 Console.WriteLine("Starting!");
-ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-// https://github.com/ExcelDataReader/ExcelDataReader#important-note-on-net-core
-System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 //your password
 var filePath = args.Length > 0 ? args[0] : "C:\\Users\\smartinmedia\\Desktop\\protected workbook.xlsx";
@@ -48,6 +44,9 @@ await Task.WhenAny(tasks);
 // Aspose.Cells    65/s
 // ExcelDataReader 8/s
 // EPPLUS          88/s 
+// IronXL          90/s - Cannot run outside of visual studio
+// MinExcel password not supported
+// ClosedXML password not supported
 void CrackStream(string filePath, Generator generator, FileInfo fileInfo)
 {
     if (fileInfo == null || fileInfo.DirectoryName == null)
@@ -73,10 +72,11 @@ void CrackStream(string filePath, Generator generator, FileInfo fileInfo)
             // Console.WriteLine($"Trying {password}");
             ms.Position = 0;
 
-            using var package = new ExcelPackage(ms, password);
+            using (var package = new ExcelPackage(ms, password));
             Console.WriteLine($"Success! Password is {password}");
             CreateResultFile(password, fileInfo.DirectoryName);
             success = true;
+            Environment.Exit(0);
             return;
         }
         catch (Exception ex)
