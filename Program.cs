@@ -1,12 +1,11 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using Aspose.Cells;
+// using Aspose.Cells;
 using ExcelCrack;
-using ExcelDataReader;
-using System.IO;
-using System.Threading.Channels;
+using OfficeOpenXml;
 using System.Timers;
 
 Console.WriteLine("Starting!");
+ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 // https://github.com/ExcelDataReader/ExcelDataReader#important-note-on-net-core
 System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
@@ -45,6 +44,10 @@ for (var thread = 1; thread <= threads; thread++)
 
 await Task.WhenAny(tasks);
 
+// Spire.XLS       80/s
+// Aspose.Cells    65/s
+// ExcelDataReader 8/s
+// EPPLUS          88/s 
 void CrackStream(string filePath, Generator generator, FileInfo fileInfo)
 {
     if (fileInfo == null || fileInfo.DirectoryName == null)
@@ -60,21 +63,17 @@ void CrackStream(string filePath, Generator generator, FileInfo fileInfo)
     }
     
     bool success = false;
+
     do
     {
         var password = generator.generateNextPassword();
-        var config = new ExcelReaderConfiguration
-        {
-            Password = password
-        };
 
         try
         {
             // Console.WriteLine($"Trying {password}");
             ms.Position = 0;
-            using var workbook = new Workbook(ms, new LoadOptions { Password = password });
-            workbook.Unprotect(password);
 
+            using var package = new ExcelPackage(ms, password);
             Console.WriteLine($"Success! Password is {password}");
             CreateResultFile(password, fileInfo.DirectoryName);
             success = true;

@@ -9,7 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Aspose.Cells" Version="23.9.0" />
-    <PackageReference Include="ExcelDataReader" Version="3.6.0" />
+    <PackageReference Include="EPPlus" Version="6.2.9" />
+    <PackageReference Include="FreeSpire.XLS" Version="12.7.0" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="7.0.0" />
   </ItemGroup>
 
